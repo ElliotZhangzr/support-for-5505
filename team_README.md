@@ -38,14 +38,6 @@ Start in development mode:
 python app.py
 ```
 
-Optional initialization command (CLI):
-
-```bash
-flask --app app.py init-db
-```
-
-Note: The project will also automatically ensure table structure and market runtime state when handling requests, so manual initialization is not required every time.
-
 ## 4. Directory and Key Files
 
 - `app.py`: Main backend, including models, routes, authentication, trading, and admin features
