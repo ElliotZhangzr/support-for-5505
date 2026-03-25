@@ -1,41 +1,48 @@
-from __future__ import annotations
-
 import os
-import sqlite3
-import sys
+from datetime import UTC, datetime
 
-from flask import Flask, jsonify
-
-
-def create_app() -> Flask:
-    """Create a minimal Flask app used for environment readiness checks."""
-    app = Flask(__name__)
-    app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-only-key")
-
-    @app.get("/")
-    def index():
-        return "TEAM bootstrap app is running."
-
-    @app.get("/health")
-    def health():
-        # Basic sqlite check to ensure the standard library db module is usable.
-        with sqlite3.connect(":memory:") as conn:
-            conn.execute("SELECT 1")
-
-        return jsonify(
-            {
-                "status": "ok",
-                "python_version": sys.version.split()[0],
-                "flask_version": Flask.__version__,
-                "message": "Environment is ready for team development.",
-            }
-        )
-
-    return app
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
 
 
-app = create_app()
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+
+app = Flask(__name__)
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-only-secret-key")
+app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
+    "DATABASE_URL", f"sqlite:///{os.path.join(BASE_DIR, 'app.db')}"
+)
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+db = SQLAlchemy(app)
+
+
+def utc_now() -> datetime:
+    return datetime.now(UTC)
+
+
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(30), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
+    is_admin = db.Column(db.Boolean, nullable=False, default=False)
+    cash = db.Column(db.Float, nullable=False, default=10_000.0)
+    created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
+
+
+@app.route("/")
+def index():
+    return "App is running."
+
+
+@app.cli.command("init-db")
+def init_db_command():
+    db.create_all()
+    print("Database initialized.")
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    with app.app_context():
+        db.create_all()
+    app.run(debug=True)
