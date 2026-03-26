@@ -1,4 +1,4 @@
-正在优化工具选择...# Checkpoint 2 Meeting Preparation Document
+# Checkpoint 2 Meeting Preparation Document
 
 ## 1. Application Decision
 
