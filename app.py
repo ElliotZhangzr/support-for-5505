@@ -1,41 +1,78 @@
-from __future__ import annotations
+from flask import Flask, render_template, request, redirect, session, flash
+from db import init_db
 
-import os
-import sqlite3
-import sys
+app = Flask(__name__)
+app.secret_key = "secret123"
 
-from flask import Flask, jsonify
+# Initialize database
+init_db(app)
+
+users = {}
+
+# login
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+
+        for user, data in users.items():
+            if (username == user or username == data["email"]) and password == data["password"]:
+                session["user"] = user
+                return redirect("/dashboard")
+
+        return render_template("fail.html")
+
+    return render_template("login.html")
+
+# register
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        username = request.form.get("username")
+        email = request.form.get("email")
+        password = request.form.get("password")
+
+        users[username] = {
+            "email": email,
+            "password": password
+        }
+
+        flash("Register success!")
+        return redirect("/login")
+
+    return render_template("register.html")
 
 
-def create_app() -> Flask:
-    """Create a minimal Flask app used for environment readiness checks."""
-    app = Flask(__name__)
-    app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-only-key")
 
-    @app.get("/")
-    def index():
-        return "TEAM bootstrap app is running."
-
-    @app.get("/health")
-    def health():
-        # Basic sqlite check to ensure the standard library db module is usable.
-        with sqlite3.connect(":memory:") as conn:
-            conn.execute("SELECT 1")
-
-        return jsonify(
-            {
-                "status": "ok",
-                "python_version": sys.version.split()[0],
-                "flask_version": Flask.__version__,
-                "message": "Environment is ready for team development.",
-            }
-        )
-
-    return app
+# Home page
+@app.route("/")
+def home():
+    if "user" in session:
+        return redirect("/dashboard")
+    return redirect("/login")
 
 
-app = create_app()
+@app.route("/dashboard")
+def dashboard():
+    if "user" not in session:
+        return redirect("/login")
+    return render_template("dashboard.html")
+
+
+@app.route("/leaderboard")
+def leaderboard():
+    if "user" not in session:
+        return redirect("/login")
+    return render_template("leaderboard.html")
+
+
+# logout
+@app.route("/logout")
+def logout():
+    session.pop("user", None)
+    return redirect("/login")
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    app.run(debug=True)
